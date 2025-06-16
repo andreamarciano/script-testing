@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { getEnv } from "../routes/auth";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { getEnv } from "../routes/getEnv";
 import { AuthRequest } from "../types/auth";
 
 const jwtSecret = getEnv("JWT_SECRET");
@@ -15,16 +15,34 @@ function authMiddleware(req: Request, res: Response, next: NextFunction) {
   }
 
   // token provided
-  jwt.verify(token, jwtSecret, (err, decoded) => {
-    // token invalid or expired
-    if (err || typeof decoded !== "object" || !decoded || !("id" in decoded)) {
-      res.status(401).json({ message: "Invalid token" });
-      return;
-    }
+  jwt.verify(
+    token,
+    jwtSecret,
+    (
+      err: jwt.VerifyErrors | null,
+      decoded: string | JwtPayload | undefined
+    ) => {
+      // token invalid or expired
+      if (
+        err ||
+        typeof decoded !== "object" ||
+        !decoded ||
+        !("id" in decoded)
+      ) {
+        res.status(401).json({ message: "Invalid token" });
+        return;
+      }
 
-    (req as AuthRequest).userId = decoded.id;
-    next();
-  });
+      const userId = Number((decoded as JwtPayload).id);
+      if (isNaN(userId)) {
+        res.status(401).json({ message: "Invalid token payload" });
+        return;
+      }
+
+      (req as AuthRequest).userId = userId;
+      next();
+    }
+  );
 }
 
 export default authMiddleware;

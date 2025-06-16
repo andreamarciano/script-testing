@@ -51,7 +51,6 @@ Edit the `schema.prisma` file to define your data models:
 ```prisma
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -61,7 +60,7 @@ datasource db {
 
 model User {
   id       Int    @id @default(autoincrement())
-  user     String @unique
+  username String @unique
   password String
   todos    Todo[]
 }
@@ -75,7 +74,15 @@ model Todo {
 }
 ```
 
-#### 3. Create a Prisma Client File
+#### 3. Generate the Prisma Client
+
+```bash
+npx prisma generate
+```
+
+This generates the TypeScript client you can import and use in your app.
+
+#### 4. Create a Prisma Client File
 
 In `src/prisma.ts`, add:
 
@@ -120,6 +127,8 @@ Update `tsconfig.json` with the following:
 
 ```text
 /MyBackendProject
+├── /node_modules
+│   └── @prisma/client   # generate
 ├── /public
 ├── /prisma
 │   └── schema.prisma    # Prisma Schema

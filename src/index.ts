@@ -10,7 +10,6 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const jwtSecret = process.env.JWT_SECRET as string;
 
 const publicPath = path.join(__dirname, "../public");
 

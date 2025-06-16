@@ -1,0 +1,52 @@
+# Token
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzUwMDY1NTM5LCJleHAiOjE3NTAxNTE5Mzl9.kAQrxeDT_AAw_6-QZiU5bp32tkcu3j2Z5itkJ8GC66Q
+
+### GET /
+GET http://localhost:3000
+
+### Register a user POST /AUTH/REGISTER
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+    "username": "arzitest@gmail.com",
+    "password": "123123123"
+}
+
+### Login a user POST /AUTH/LOGIN
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+    "username": "arzitest@gmail.com",
+    "password": "123123123"
+}
+
+### Fetch all todos GET /TODOS (protected)
+GET http://localhost:3000/todos
+Authorization: {{token}}
+
+### Creates a new todo POST /TODOS (protected)
+POST http://localhost:3000/todos
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+    "task": "Finish coding this project"
+}
+
+### Update a todo PUT /TODOS/:ID (protected)
+# PUT http://localhost:3000/todos/2?pages=4
+PUT http://localhost:3000/todos/2
+Authorization: {{token}}
+Content-Type: application/json
+
+{
+    "completed": 1
+    // "task": "Modified Task"
+}
+
+### Delete a todo DELETE /TODOS/:ID (protected)
+DELETE http://localhost:3000/todos/2
+Authorization: {{token}}
+    

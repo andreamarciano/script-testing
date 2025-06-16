@@ -1,4 +1,4 @@
-# Backend Project - Express, TypeScript, SQLite
+# Backend Project - TypeScript, NodeJS, ExpressJS, PostgreSQL, Prisma, Docker
 
 A backend practice project using **Node.js**, **Express.js**, **TypeScript**, **PostgreSQL**, **Prisma**, **Docker**.
 

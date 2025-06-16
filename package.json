@@ -1,5 +1,5 @@
 {
-  "name": "secondproject",
+  "name": "thirdproject",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -8,13 +8,16 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "Backend with SQLite",
+  "description": "A dockerized full stack todo application that uses a NodeJS backend, a PostgreSQL database, a Prisma ORM, and JWT Authentication.",
   "dependencies": {
+    "@prisma/client": "^6.9.0",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.10.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0",
+    "prisma": "^6.9.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

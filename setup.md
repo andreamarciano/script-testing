@@ -1,4 +1,4 @@
-# ⚙️ Setup - TypeScript + Express + SQLite
+# ⚙️ Setup - TypeScript, NodeJS, ExpressJS, PostgreSQL, Prisma, Docker
 
 ## 📦 Step 1: Initialize the Project
 
@@ -13,7 +13,7 @@ npm init -y
 ### Runtime dependencies
 
 ```bash
-npm install express bcryptjs jsonwebtoken dotenv better-sqlite3
+npm install express bcryptjs jsonwebtoken dotenv @prisma/client pg
 ```
 
 - `bcryptjs`: Library used to hash and compare passwords securely.
@@ -22,12 +22,69 @@ npm install express bcryptjs jsonwebtoken dotenv better-sqlite3
 
 - `dotenv`: Loads environment variables from a `.env` file into `process.env`.
 
-- `better-sqlite3`: Fast and simple SQLite3 database client with synchronous API.
+- `@prisma/client`: The generated **Prisma** client used to interact with your database.
+
+- `pg`: **PostgreSQL** client for Node.js.
 
 ### Development dependencies
 
 ```bash
-npm install -D typescript ts-node @types/node @types/express @types/bcryptjs @types/jsonwebtoken @types/better-sqlite3 nodemon
+npm install -D prisma typescript ts-node @types/node @types/express @types/bcryptjs @types/jsonwebtoken @types/better-sqlite3 nodemon
+```
+
+- `prisma`: CLI to manage database schema, migrations, and generate the client.
+
+---
+
+#### 1. Initialize Prisma
+
+```bash
+npx prisma init
+```
+
+This creates a `prisma/` directory with a `schema.prisma` file.
+
+#### 2. Define Your Models
+
+Edit the `schema.prisma` file to define your data models:
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  user     String @unique
+  password String
+  todos    Todo[]
+}
+
+model Todo {
+  id        Int     @id @default(autoincrement())
+  task      String
+  completed Boolean @default(false)
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+}
+```
+
+#### 3. Create a Prisma Client File
+
+In `src/prisma.ts`, add:
+
+```ts
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+export default prisma;
 ```
 
 ---
@@ -64,6 +121,8 @@ Update `tsconfig.json` with the following:
 ```text
 /MyBackendProject
 ├── /public
+├── /prisma
+│   └── schema.prisma    # Prisma Schema
 ├── /src
 │   ├── /middleware
 │   │   └── auth.ts
@@ -71,6 +130,7 @@ Update `tsconfig.json` with the following:
 │   │   ├── auth.ts
 │   │   └── todo.ts
 │   ├── db.ts
+│   ├── prismaClient.ts  # Prisma Client
 │   └── index.ts         # Main entry point
 ├── .env
 ├── package.json

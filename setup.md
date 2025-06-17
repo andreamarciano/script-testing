@@ -270,6 +270,18 @@ SELECT * FROM "Todo";
 \q  -- quit
 ```
 
+### 🗄️ Useful PostgreSQL CLI Commands
+
+| Command         | Description                         |
+| --------------- | ----------------------------------- |
+| `\dt`           | List all tables                     |
+| `\d table_name` | Show table schema                   |
+| `\l`            | List all databases                  |
+| `\c dbname`     | Connect to a different database     |
+| `\du`           | List all roles/users                |
+| `\conninfo`     | Show current connection information |
+| `\q`            | Quit the PostgreSQL CLI             |
+
 ---
 
 ## 🔄 Step 11: Development Workflow {#step11}

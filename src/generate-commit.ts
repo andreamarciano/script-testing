@@ -33,13 +33,14 @@ You are a helpful assistant that generates Git commit messages.
 
 From the following git diff, generate:
 1. A short commit title (max 70 chars, Conventional Commits style)
-2. A commit description (1-3 sentences) ONLY if necessary. 
-   - If the changes are small or fully explained by the title, leave the description empty. 
-   - Use the description to explain larger or complex changes.
+2. A commit description (1-3 sentences) ONLY IF ABSOLUTELY NECESSARY.
+   - If the commit title already fully explains the change, write "description:" and leave it completely empty.
+   - Do not invent or rephrase explanations just to fill the description.
+   - Only add a description for complex or multi-file changes.
 
-Output format:
+Output format (strict):
 title: <short title>
-description: <longer description or leave empty if not needed>
+description: <leave blank if not needed>
 
 Here is the git diff:
 ${diff}
@@ -105,3 +106,4 @@ ${diff}
 generateCommitMessage().catch(console.error);
 
 // git diff > git-diff.txt
+// git diff --staged > git-diff/git-diff.txt

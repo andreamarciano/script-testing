@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 import readline from "readline";
 import { execSync } from "child_process";
+import chalk from "chalk";
 
 dotenv.config();
 
@@ -40,6 +41,34 @@ function askQuestion(query: string): Promise<string> {
   );
 }
 
+function askYesNo(query: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    process.stdout.write(query);
+
+    // raw mode
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding("utf8");
+
+    const onData = (key: string) => {
+      const k = key.toLowerCase();
+      if (k === "y" || k === "n") {
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        process.stdin.removeListener("data", onData);
+        process.stdout.write(k + "\n");
+        resolve(k === "y");
+      }
+      if (key === "\u0003") {
+        // Ctrl+C
+        process.exit();
+      }
+    };
+
+    process.stdin.on("data", onData);
+  });
+}
+
 async function generateCommitMessage() {
   try {
     /* 1. Choose files to add for "git add" & "git diff" */
@@ -48,18 +77,18 @@ async function generateCommitMessage() {
     );
 
     if (userInput.toLowerCase() === "all") {
-      console.log("Executing: git add .");
+      console.log(chalk.blue("Executing: git add ."));
       execSync("git add .", { stdio: "inherit" });
 
-      console.log("Executing: git diff --staged");
+      console.log(chalk.yellow("Executing: git diff --staged"));
       const diffOutput = execSync("git diff --staged", { encoding: "utf-8" });
       fs.writeFileSync(DIFF_FILE, diffOutput);
     } else {
       const files = userInput.split(" ").join(" ");
-      console.log(`Executing: git add ${files}`);
+      console.log(chalk.blue(`Executing: git add ${files}`));
       execSync(`git add ${files}`, { stdio: "inherit" });
 
-      console.log("Executing: git diff --staged");
+      console.log(chalk.yellow("Executing: git diff --staged"));
       const diffOutput = execSync("git diff --staged", { encoding: "utf-8" });
       fs.writeFileSync(DIFF_FILE, diffOutput);
     }
@@ -67,7 +96,7 @@ async function generateCommitMessage() {
     /* 2. Generate commit message with LLM */
     const diff = fs.readFileSync(DIFF_FILE, "utf-8");
     if (!diff.trim()) {
-      console.error("Git diff is empty. Nothing to commit.");
+      console.error(chalk.red("Git diff is empty. Nothing to commit."));
       return;
     }
 
@@ -127,15 +156,13 @@ ${diff}
 
     console.log("\n--- Generated commit ---\n");
     console.log(output);
-    console.log(`\nSaved to: ${OUTPUT_FILE}\n`);
+    console.log(`\n ${chalk.magenta("Saved to:")} ${OUTPUT_FILE}\n`);
 
     /* 3. Use commit for "git commit" */
-    const confirm = await askQuestion(
-      "Do you want to use this commit? (y/n): "
-    );
-    if (confirm.toLowerCase() === "y") {
+    const confirm = await askYesNo("Do you want to use this commit? (y/n): ");
+    if (confirm) {
       execSync(gitCommitString, { stdio: "inherit" });
-      console.log("\n✅ Commit created successfully!");
+      console.log(chalk.green("\n✅ Commit created successfully!"));
     } else {
       console.log(
         "\nYou chose not to commit automatically. Here's the command you can use:"

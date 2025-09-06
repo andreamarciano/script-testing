@@ -69,38 +69,9 @@ function askYesNo(query: string): Promise<boolean> {
   });
 }
 
-async function generateCommitMessage() {
-  try {
-    /* 1. Choose files to add for "git add" & "git diff" */
-    const userInput = await askQuestion(
-      "Add file/s for git diff (path or 'all'): "
-    );
-
-    if (userInput.toLowerCase() === "all") {
-      console.log(chalk.blue("Executing: git add ."));
-      execSync("git add .", { stdio: "inherit" });
-
-      console.log(chalk.yellow("Executing: git diff --staged"));
-      const diffOutput = execSync("git diff --staged", { encoding: "utf-8" });
-      fs.writeFileSync(DIFF_FILE, diffOutput);
-    } else {
-      const files = userInput.split(" ").join(" ");
-      console.log(chalk.blue(`Executing: git add ${files}`));
-      execSync(`git add ${files}`, { stdio: "inherit" });
-
-      console.log(chalk.yellow("Executing: git diff --staged"));
-      const diffOutput = execSync("git diff --staged", { encoding: "utf-8" });
-      fs.writeFileSync(DIFF_FILE, diffOutput);
-    }
-
-    /* 2. Generate commit message with LLM */
-    const diff = fs.readFileSync(DIFF_FILE, "utf-8");
-    if (!diff.trim()) {
-      console.error(chalk.red("Git diff is empty. Nothing to commit."));
-      return;
-    }
-
-    const prompt = `
+// === Generate Commit From Diff Only ===
+async function generateCommitFromDiff(diff: string) {
+  const prompt = `
 You are a helpful assistant that generates Git commit messages.
 
 From the following git diff, generate:
@@ -118,63 +89,135 @@ Here is the git diff:
 ${diff}
   `;
 
-    const response = await fetch("https://openrouter.ai/api/v1/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        prompt: prompt,
-        max_tokens: 300,
-        temperature: 0.3,
-      }),
-    });
+  const response = await fetch("https://openrouter.ai/api/v1/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      prompt: prompt,
+      max_tokens: 300,
+      temperature: 0.3,
+    }),
+  });
 
-    const data: OpenRouterResponse =
-      (await response.json()) as OpenRouterResponse;
-    // console.log(JSON.stringify(data, null, 2));
-    if (!data.choices || data.choices.length === 0) {
-      console.error("No choices returned from API:", data);
+  const data: OpenRouterResponse =
+    (await response.json()) as OpenRouterResponse;
+  // console.log(JSON.stringify(data, null, 2));
+  if (!data.choices || data.choices.length === 0) {
+    throw new Error("No choices returned from API");
+  }
+
+  const output = data.choices[0].text;
+  const titleMatch = output.match(/title:\s*(.*)/i);
+  const descMatch = output.match(/description:\s*([\s\S]*)/i);
+
+  const commitTitle = titleMatch
+    ? titleMatch[1].trim()
+    : "chore: update commit";
+  const commitDescription = descMatch ? descMatch[1].trim() : "";
+  const gitCommitString = commitDescription
+    ? `git commit -m "${commitTitle}" -m "${commitDescription}"`
+    : `git commit -m "${commitTitle}"`;
+
+  return { commitTitle, commitDescription, gitCommitString, output };
+}
+
+// === CLI Mode ===
+async function generateCommitMessageCLI() {
+  /* 1. Choose files to add for "git add" & "git diff" */
+  const userInput = await askQuestion(
+    "Add file/s for git diff (path or 'all'): "
+  );
+
+  if (userInput.toLowerCase() === "all") {
+    console.log(chalk.blue("Executing: git add ."));
+    execSync("git add .", { stdio: "inherit" });
+  } else {
+    console.log(chalk.blue(`Executing: git add ${userInput}`));
+    execSync(`git add ${userInput}`, { stdio: "inherit" });
+  }
+
+  console.log(chalk.yellow("Executing: git diff --staged"));
+  const diffOutput = execSync("git diff --staged", { encoding: "utf-8" });
+
+  /* 2. Generate commit message with LLM */
+  fs.writeFileSync(DIFF_FILE, diffOutput);
+  if (!diffOutput.trim()) {
+    console.error(chalk.red("Git diff is empty. Nothing to commit."));
+    return;
+  }
+
+  const { commitTitle, commitDescription, gitCommitString, output } =
+    await generateCommitFromDiff(diffOutput);
+
+  fs.writeFileSync(OUTPUT_FILE, gitCommitString);
+
+  console.log("\n--- Generated commit ---\n");
+  console.log(output);
+  console.log(`\n${chalk.magenta("Saved to:")} ${OUTPUT_FILE}\n`);
+
+  /* 3. Use commit for "git commit" */
+  const confirm = await askYesNo("Do you want to use this commit? (y/n): ");
+  if (confirm) {
+    execSync(gitCommitString, { stdio: "inherit" });
+    console.log(chalk.green("\n✅ Commit created successfully!"));
+  } else {
+    console.log(
+      "\nYou chose not to commit automatically. Here's the command you can use:"
+    );
+    console.log(`${gitCommitString}\n`);
+  }
+}
+
+// === Choose Mode ===
+async function chooseMode(): Promise<"auto" | "manual"> {
+  const answer = await askQuestion(`
+Choose mode:
+1) Automatic CLI (add files, generate diff)
+2) Manual mode (use existing git-diff.txt)
+> `);
+
+  if (answer === "1") return "auto";
+  if (answer === "2") return "manual";
+  console.log("Invalid choice, defaulting to manual mode.");
+  return "manual";
+}
+
+async function run() {
+  const mode = await chooseMode();
+
+  if (mode === "auto") {
+    await generateCommitMessageCLI();
+  } else {
+    if (!fs.existsSync(DIFF_FILE)) {
+      console.error(chalk.red(`Git diff file not found: ${DIFF_FILE}`));
+      return;
+    }
+    const diff = fs.readFileSync(DIFF_FILE, "utf-8");
+    if (!diff.trim()) {
+      console.error(chalk.red("Git diff file is empty."));
       return;
     }
 
-    const output = data.choices[0].text;
-    const titleMatch = output.match(/title:\s*(.*)/i);
-    const descMatch = output.match(/description:\s*([\s\S]*)/i);
-
-    const commitTitle = titleMatch
-      ? titleMatch[1].trim()
-      : "chore: update commit";
-    const commitDescription = descMatch ? descMatch[1].trim() : "";
-    const gitCommitString = commitDescription
-      ? `git commit -m "${commitTitle}" -m "${commitDescription}"`
-      : `git commit -m "${commitTitle}"`;
+    const { commitTitle, commitDescription, gitCommitString } =
+      await generateCommitFromDiff(diff);
 
     fs.writeFileSync(OUTPUT_FILE, gitCommitString);
 
     console.log("\n--- Generated commit ---\n");
-    console.log(output);
-    console.log(`\n ${chalk.magenta("Saved to:")} ${OUTPUT_FILE}\n`);
-
-    /* 3. Use commit for "git commit" */
-    const confirm = await askYesNo("Do you want to use this commit? (y/n): ");
-    if (confirm) {
-      execSync(gitCommitString, { stdio: "inherit" });
-      console.log(chalk.green("\n✅ Commit created successfully!"));
-    } else {
-      console.log(
-        "\nYou chose not to commit automatically. Here's the command you can use:"
-      );
-      console.log(`${gitCommitString}\n`);
-    }
-  } catch (err) {
-    console.error("Error:", err);
+    console.log(`Title: ${commitTitle}`);
+    console.log(`Description: ${commitDescription || "(empty)"}`);
+    console.log(`\n${chalk.magenta("Saved to:")} ${OUTPUT_FILE}`);
+    console.log(
+      `\n${chalk.magenta("Git commit command:")}\n\n${gitCommitString}\n`
+    );
   }
 }
 
-generateCommitMessage();
+run().catch(console.error);
 
 // git diff > git-diff.txt
 // git diff --staged > git-diff/git-diff.txt

@@ -6,7 +6,8 @@
     "dev": "nodemon --watch src --exec ts-node src/index.ts",
     "commit": "ts-node src/generate-commit.ts",
     "commit2": "ts-node src/generate-commit-axios.ts",
-    "comuni": "ts-node src/merge-comuni.ts"
+    "comuni": "ts-node src/merge-comuni.ts",
+    "snippets": "ts-node src/sync-snippets.ts"
   },
   "keywords": [],
   "author": "",
